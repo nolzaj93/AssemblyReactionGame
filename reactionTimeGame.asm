@@ -39,7 +39,7 @@ count:  .byte       1
 	
 					;set interrupt vector table 
 					; entry for button pushed
-	.org PORTE_INT0_vect
+	.org PORTD_INT0_vect
 					; interrupt for button press
 	jmp GameButtonPressed_ISR
 
