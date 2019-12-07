@@ -67,14 +67,14 @@ start:
 	out CPU_SPH,tmp  
 	
 	//Setup Game interrupt
-	; setup port-e pin 0 as output and pin 1 as input
-	lds tmp,PORTE_DIR
+	; setup port-D pin 0 as output and pin 1 as input
+	lds tmp,PORTD_DIR
 ; do not change other pins
 	andi tmp,0b11111101
 ; pin-1 -> 0=input
 	ori tmp,0b00000001
 ; pin-0 -> 1=output
-	sts PORTE_DIR,tmp
+	sts PORTD_DIR,tmp
 
 ; enable priority levels low, medium, and high
 	ldi tmp,0xd8
@@ -85,21 +85,21 @@ start:
 	
 	sts PMIC_CTRL,tmp
 
-; set port-e pin-1 to pull-down and sense rising edge
+; set port-D pin-1 to pull-down and sense rising edge
 	ldi tmp,0b00010001
 ; 00 - OPC:010=pulldown - ISC:001=rising
 	
-	sts PORTE_PIN1CTRL,tmp
+	sts PORTD_PIN1CTRL,tmp
 ; "
-; enable interrupt-0 from port-e as medium level priority
+; enable interrupt-0 from port-D as medium level priority
 	ldi tmp,0b00000010
 ; medium priority
-	sts PORTE_INTCTRL,tmp
+	sts PORTD_INTCTRL,tmp
 ; interrupt 0
 ; map port-e pin-1 to use interrupt-0 mask
 	ldi tmp,0b00000010
 ; set pin 1 in int-0 mask
-	sts PORTE_INT0MASK,tmp
+	sts PORTD_INT0MASK,tmp
 	
 	// Setup timer interrupt
 	ldi r16,0xD8
@@ -170,15 +170,15 @@ end:	 rjmp end
 GameButtonPressed_ISR:
 	 push tmp
 ; save tmp register
-	 lds tmp,PORTE_IN
+	 lds tmp,PORTD_IN
 ; read port
 
 ; set bit-0 off=0
-toggle_on_red:
-	 ori tmp,0b00000001
+toggle_on_green:
+	 ori tmp,0b00100000
 ; set bit-0 on=1
-set_led_red: 
-	 sts PORTE_OUT,tmp
+set_led_green: 
+	 sts PORTD_OUT,tmp
 ; toggle led
 	 nop
 	 nop
@@ -188,10 +188,10 @@ set_led_red:
 toggle_off:
 	 andi tmp,0b11111110	
 set_led_off: 
-	 sts PORTE_OUT,tmp	 
+	 sts PORTD_OUT,tmp	 
 	 	 
          pop tmp
-; restore tmp regsiter
+; restore tmp register
 	 reti
 ; return from interrupt
 
