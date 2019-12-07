@@ -34,15 +34,14 @@
 count:  .byte       1	
 	
         .cseg
-	.org	0x00		; reset
+	.org	0x00			; reset
 	jmp	start
 	
-        ;set interrupt vector table 
-	; entry for button pushed
+					;set interrupt vector table 
+					; entry for button pushed
 	.org PORTE_INT0_vect
-	; interrupt for button press
+					; interrupt for button press
 	jmp GameButtonPressed_ISR
-	; on PortE - pin 1
 
 	.org TCF0_OVF_vect
 	jmp timerISR
@@ -58,48 +57,49 @@ start:
 	clr  tmp
 	sts  count,tmp
 
-	; intialize stack pointer
+					; intialize stack pointer
 	ldi tmp,low(RAMEND)
-	; init SP
+					; init SP
 	out CPU_SPL,tmp   
 	ldi tmp,high(RAMEND)
 
 	out CPU_SPH,tmp  
 	
 	//Setup Game interrupt
-	; setup port-D pin 0 as output and pin 1 as input
+					; setup port-D pin 0 as output and pin 1 as input
 	lds tmp,PORTD_DIR
-; do not change other pins
+					; do not change other pins
 	andi tmp,0b11111101
-; pin-1 -> 0=input
+					; pin-1 -> 0=input
 	ori tmp,0b00000001
-; pin-0 -> 1=output
+					; pin-0 -> 1=output
 	sts PORTD_DIR,tmp
 
-; enable priority levels low, medium, and high
+					; enable priority levels low, medium, and high
 	ldi tmp,0xd8
-; enbable config register changes
+					; enbable config register changes
 	sts CPU_CCP,tmp
 
-	ldi tmp,0b00000111	    ; high/med/low
+	ldi tmp,0b00000111		; high/med/low
 	
 	sts PMIC_CTRL,tmp
-
-; set port-D pin-1 to pull-down and sense rising edge
+					; enable interrupt-0 from port-D as medium level priority
+	ldi tmp,0b00000010
+					; medium priority
+	sts PORTD_INTCTRL,tmp
+					; interrupt 0
+					; map port-e pin-1 to use interrupt-0 mask
+	ldi tmp,0b00000010
+					; set pin 1 in int-0 mask
+	sts PORTD_INT0MASK,tmp
+	
+					; set port-D pin-1 to pull-down and sense rising edge
 	ldi tmp,0b00010001
-; 00 - OPC:010=pulldown - ISC:001=rising
+					; 00 - OPC:010=pulldown - ISC:001=rising
 	
 	sts PORTD_PIN1CTRL,tmp
-; "
-; enable interrupt-0 from port-D as medium level priority
-	ldi tmp,0b00000010
-; medium priority
-	sts PORTD_INTCTRL,tmp
-; interrupt 0
-; map port-e pin-1 to use interrupt-0 mask
-	ldi tmp,0b00000010
-; set pin 1 in int-0 mask
-	sts PORTD_INT0MASK,tmp
+	
+	sei
 	
 	// Setup timer interrupt
 	ldi r16,0xD8
@@ -124,38 +124,35 @@ start:
 	sts TCF0_INTCTRLA,r16
 	
 	// Port F(1)
-	; setup port-e pin 0 as output and pin 1 as input
+				    ; setup port-e pin 0 as output and pin 1 as input
 	lds tmp,PORTF_DIR
-; do not change other pins
+				    ; do not change other pins
 	andi tmp,0b11111101
-; pin-1 -> 0=input
+				    ; pin-1 -> 0=input
 	ori tmp,0b00000001
-; pin-0 -> 1=output
+				    ; pin-0 -> 1=output
 	sts PORTF_DIR,tmp
 
-; enable priority levels low, medium, and high
+				    ; enable priority levels low, medium, and high
 	ldi tmp,0xd8
-; enbable config register changes
+				    ; enbable config register changes
 	sts CPU_CCP,tmp
 
 	ldi tmp,0b00000111	    ; high/med/low
 	
 	sts PMIC_CTRL,tmp
 
-; set port-F pin-1 to pull-down and sense rising edge
-	ldi tmp,0b00010001
-; 00 - OPC:010=pulldown - ISC:001=rising
+	sei
+				    ; set port-F pin-1 to pull-down and sense rising edge
+	ldi tmp,0b00010001	    ; 00 - OPC:010=pulldown - ISC:001=rising
 	
-	sts PORTF_PIN1CTRL,tmp
-; "
-; enable interrupt-0 from port-F as medium level priority
-	ldi tmp,0b00000010
-; medium priority
+	sts PORTF_PIN1CTRL,tmp      ; enable interrupt-0 from port-F as medium level priority
+	ldi tmp,0b00000010          ; medium priority
 	sts PORTF_INTCTRL,tmp
-; interrupt 0
-; map port-e pin-1 to use interrupt-0 mask
+				    ; interrupt 0
+				    ; map port-e pin-1 to use interrupt-0 mask
 	ldi tmp,0b00000010
-; set pin 1 in int-0 mask
+				    ;    set pin 1 in int-0 mask
 	sts PORTF_INT0MASK,tmp
 	
 	
@@ -169,17 +166,17 @@ end:	 rjmp end
 ;----------------------------------------------------------
 GameButtonPressed_ISR:
 	 push tmp
-; save tmp register
+			    ; save tmp register
 	 lds tmp,PORTD_IN
-; read port
+			    ; read port
 
-; set bit-0 off=0
+			    ; set bit-0 off=0
 toggle_on_green:
 	 ori tmp,0b00100000
-; set bit-0 on=1
+			    ; set bit-0 on=1
 set_led_green: 
 	 sts PORTD_OUT,tmp
-; toggle led
+			    ; toggle led
 	 nop
 	 nop
 	 nop
