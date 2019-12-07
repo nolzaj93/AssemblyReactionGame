@@ -18,9 +18,9 @@
 //      PORT D(5)	LED (green)
 //	PORT R(0)	LED (yellow bottom)
 //	PORT R(1)	LED (Yellow top)
-//	PORT E(5)	SWITCH (#1 top left)
-//	PORT F(1)	SWITCH (#2)
-//	PORT F(2)	SWITCH (#3)
+//	PORT E(5)	SWITCH (#0 top left)
+//	PORT F(1)	SWITCH (#1)
+//	PORT F(2)	SWITCH (#2)
 
 //	PORT A(3)	LCD Reset bar
 //	PORT F(3)	LCD CS bar
@@ -28,6 +28,10 @@
 //	PORT D(1)	LCD XCK
 //	PORT D(3)	LCD TX 
 //	PORT E(4)	LCD back light (1 = on, 0 = off)
+	
+	.dseg				; start a data segment
+	.org	    0x2000
+count:  .byte       1	
 	
         .cseg
 	.org	0x00		; reset
@@ -37,13 +41,23 @@
 	; entry for button pushed
 	.org PORTE_INT0_vect
 	; interrupt for button press
-	jmp ButtonPressed_ISR
-        ; on PortE - pin 1
+	jmp GameButtonPressed_ISR
+	; on PortE - pin 1
+
+	.org TCF0_OVF_vect
+	jmp timerISR
+	
+	.org PORTF_INT0_vect
+	jmp reactButtonPressed_ISR
+	
 	
 	.org	0x1000
 start:   
     
         .def tmp = r16
+	clr  tmp
+	sts  count,tmp
+
 	; intialize stack pointer
 	ldi tmp,low(RAMEND)
 	; init SP
@@ -52,6 +66,7 @@ start:
 
 	out CPU_SPH,tmp  
 	
+	//Setup Game interrupt
 	; setup port-e pin 0 as output and pin 1 as input
 	lds tmp,PORTE_DIR
 ; do not change other pins
@@ -66,8 +81,8 @@ start:
 ; enbable config register changes
 	sts CPU_CCP,tmp
 
-	ldi tmp,0b00000111
-; high/med/low
+	ldi tmp,0b00000111	    ; high/med/low
+	
 	sts PMIC_CTRL,tmp
 
 ; set port-e pin-1 to pull-down and sense rising edge
@@ -85,59 +100,121 @@ start:
 	ldi tmp,0b00000010
 ; set pin 1 in int-0 mask
 	sts PORTE_INT0MASK,tmp
-; "
+	
+	// Setup timer interrupt
+	ldi r16,0xD8
+	sts CPU_CCP,r16
+	ldi r16,0b00000111
+	sts PMIC_CTRL,r16
+	
 	sei
-; enable global interrupts
 	
-	//Listen for sw0 pressed 
-	// if sw0 pressed, call startGame
+	ldi r16,0b00000000
+	sts TCF0_CTRLB,r16
 	
-startGame:
-	// Flash Red LED 3x, output countdown to LCD if we can
+	ldi r16,(low(12500))
+	sts TCF0_PER,r16
+	ldi r16, (high(12500))
+	sts TCF0_PER + 1,r16
 	
-	// Turn LED to Green and solid, call calcReact
+	ldi r16, 0b00000110
+	sts TCF0_CTRLA,r16
 	
-calcReact:
-	//Listen for pressed sw1
+	ldi r16,0b00000001
+	sts TCF0_INTCTRLA,r16
 	
-	//Count time
-	
-	// if sw1 pressed, stop counter, call outputReact
-	
-outputReact:	
-	// Output calculated reactionTime to LCD
+	// Port F(1)
+	; setup port-e pin 0 as output and pin 1 as input
+	lds tmp,PORTF_DIR
+; do not change other pins
+	andi tmp,0b11111101
+; pin-1 -> 0=input
+	ori tmp,0b00000001
+; pin-0 -> 1=output
+	sts PORTF_DIR,tmp
 
+; enable priority levels low, medium, and high
+	ldi tmp,0xd8
+; enbable config register changes
+	sts CPU_CCP,tmp
+
+	ldi tmp,0b00000111	    ; high/med/low
+	
+	sts PMIC_CTRL,tmp
+
+; set port-F pin-1 to pull-down and sense rising edge
+	ldi tmp,0b00010001
+; 00 - OPC:010=pulldown - ISC:001=rising
+	
+	sts PORTF_PIN1CTRL,tmp
+; "
+; enable interrupt-0 from port-F as medium level priority
+	ldi tmp,0b00000010
+; medium priority
+	sts PORTF_INTCTRL,tmp
+; interrupt 0
+; map port-e pin-1 to use interrupt-0 mask
+	ldi tmp,0b00000010
+; set pin 1 in int-0 mask
+	sts PORTF_INT0MASK,tmp
+	
 	
 end:	 rjmp end	
 
     
-----------------------------------------------------------
 ; Interrupt Service Routine for button pressed:
-; toggles an LED on port-e pin-0
+; toggles an LED on port-e pin-0, then 
 ;
 ; Notice the use of "reti" to return from an interrupt call
 ;----------------------------------------------------------
-ButtonPressed_ISR:
+GameButtonPressed_ISR:
 	 push tmp
 ; save tmp register
 	 lds tmp,PORTE_IN
 ; read port
-	 sbrs tmp,0
-; if bit 0 is set (1)
-	 rjmp toggle_on
-; then do not jump (go to toggle off)
-; else go to toggle on 
-toggle_off:
-	 andi tmp,0b11111110
+
 ; set bit-0 off=0
-	 rjmp set_led
-toggle_on:
+toggle_on_red:
 	 ori tmp,0b00000001
 ; set bit-0 on=1
-set_led: 
+set_led_red: 
 	 sts PORTE_OUT,tmp
 ; toggle led
+	 nop
+	 nop
+	 nop
+	 nop
+	 
+toggle_off:
+	 andi tmp,0b11111110	
+set_led_off: 
+	 sts PORTE_OUT,tmp	 
+	 	 
          pop tmp
 ; restore tmp regsiter
 	 reti
 ; return from interrupt
+
+	 
+timerISR:
+	 push tmp
+	 lds tmp,count
+	 inc tmp
+	 sts count,tmp
+	 
+	 pop tmp
+	 
+	 reti
+	 
+reactButtonPressed_ISR:
+         push tmp
+	 lds tmp,PORTF_IN
+	 sbrs tmp,1
+	 reti
+	 
+	 lds r17,count
+	 push r17
+	 
+	 pop tmp
+	 
+	 reti
