@@ -40,9 +40,6 @@ count:  .byte       1
 					;set interrupt vector table 
 					; entry for button pushed
 	
-	.org TCF0_OVF_vect
-	jmp timerISR
-	
 	
 	.org	0x1000
 start:   
@@ -70,7 +67,7 @@ startGame:
     
 	//we can sub with LCD code
 	
-	toggle_on_red:	
+toggle_on_red:	
 	lds tmp,PORTD_IN
 
 	andi tmp,0b11101111	    ; set bit-4 off = 0
@@ -89,54 +86,7 @@ toggle_on_green:
 set_led_green: 
 	 sts PORTD_OUT,tmp
 			    ; toggle led
-	
-setupTimer:
-    // Setup timer interrupt
-	ldi r16,0xD8
-	sts CPU_CCP,r16
-	ldi r16,0b00000111
-	sts PMIC_CTRL,r16
-	
-	sei
-	
-	ldi r16,0b00000000
-	sts TCF0_CTRLB,r16
-	
-	ldi r16,(low(12500))
-	sts TCF0_PER,r16
-	ldi r16, (high(12500))  ; 0.1 second interrupt
-	sts TCF0_PER + 1,r16
-	
-	ldi r16, 0b00000110
-	sts TCF0_CTRLA,r16
-	
-	ldi r16,0b00000001
-	sts TCF0_INTCTRLA,r16
-	
-	
-	
-end:	 rjmp end	
 
-    
-timerISR:
-	 push tmp
-	 lds tmp,count
-	 inc tmp
-	 sts count,tmp
-	 
-	 pop tmp
-	 
-	 reti
-	 
-reactButtonPressed_ISR:
-         push tmp
-	 lds tmp,PORTF_IN
-	 sbrs tmp,1
-	 reti
-	 
-	 lds r17,count
-	 push r17
-	 
-	 pop tmp
-	 
-	 reti
+	
+	
+end:	 rjmp start	
