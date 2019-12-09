@@ -169,9 +169,10 @@ GameButtonPressed_ISR:
 			    ; save tmp register
        
 			    ; read port
-        lds tmp,PORTD_IN
+        lds tmp,PORTE_IN
 
-	ori tmp,0b00010000	    ; set bit-4 on = 1
+	andi tmp,0b00100000		    ; check if sw0 is pressed
+	breq		else	
 	
 	sts PORTD_OUT,tmp
 	
@@ -199,8 +200,7 @@ toggle_on_green:
 set_led_green: 
 	 sts PORTD_OUT,tmp
 			    ; toggle led
-	 	 
-	 	 
+else:	 	 	 	 
          pop tmp
 ; restore tmp register
 	 reti
