@@ -39,7 +39,7 @@ count:  .byte       1
 	
 					;set interrupt vector table 
 					; entry for button pushed
-	.org PORTD_INT0_vect
+	.org PORTE_INT0_vect
 					; interrupt for button press
 	jmp GameButtonPressed_ISR
 
@@ -67,13 +67,13 @@ start:
 	
 	//Setup Game interrupt
 					; setup port-D pin 0 as output and pin 1 as input
-	lds tmp,PORTD_DIR
+	lds tmp,PORTE_DIR
 					; do not change other pins
 	andi tmp,0b11111101
 					; pin-1 -> 0=input
 	ori tmp,0b00000001
 					; pin-0 -> 1=output
-	sts PORTD_DIR,tmp
+	sts PORTE_DIR,tmp
 
 					; enable priority levels low, medium, and high
 	ldi tmp,0xd8
@@ -86,18 +86,18 @@ start:
 					; enable interrupt-0 from port-D as medium level priority
 	ldi tmp,0b00000010
 					; medium priority
-	sts PORTD_INTCTRL,tmp
+	sts PORTE_INTCTRL,tmp
 					; interrupt 0
 					; map port-e pin-1 to use interrupt-0 mask
 	ldi tmp,0b00000010
 					; set pin 1 in int-0 mask
-	sts PORTD_INT0MASK,tmp
+	sts PORTE_INT0MASK,tmp
 	
-					; set port-D pin-1 to pull-down and sense rising edge
+					; set port-E pin-1 to pull-down and sense rising edge
 	ldi tmp,0b00010001
 					; 00 - OPC:010=pulldown - ISC:001=rising
 	
-	sts PORTD_PIN1CTRL,tmp
+	sts PORTE_PIN5CTRL,tmp
 	
 	sei
 	
@@ -114,7 +114,7 @@ start:
 	
 	ldi r16,(low(12500))
 	sts TCF0_PER,r16
-	ldi r16, (high(12500))
+	ldi r16, (high(12500))  ; 0.1 second interrupt
 	sts TCF0_PER + 1,r16
 	
 	ldi r16, 0b00000110
@@ -124,7 +124,7 @@ start:
 	sts TCF0_INTCTRLA,r16
 	
 	// Port F(1)
-				    ; setup port-e pin 0 as output and pin 1 as input
+				    ; setup port-F pin 0 as output and pin 1 as input
 	lds tmp,PORTF_DIR
 				    ; do not change other pins
 	andi tmp,0b11111101
@@ -167,25 +167,39 @@ end:	 rjmp end
 GameButtonPressed_ISR:
 	 push tmp
 			    ; save tmp register
-	 lds tmp,PORTD_IN
+       
 			    ; read port
+        lds tmp,PORTD_IN
 
-			    ; set bit-0 off=0
+	ori tmp,0b00010000	    ; set bit-4 on = 1
+	
+	sts PORTD_OUT,tmp
+	
+	nop
+	nop
+	nop
+	nop
+
+toggle_on_red:	
+	lds tmp,PORTD_IN
+
+	andi tmp,0b11101111	    ; set bit-4 off = 0
+
+set_led_red: 	
+	sts PORTD_OUT,tmp
+
+	nop
+	nop
+	nop
+	nop
+	
 toggle_on_green:
 	 ori tmp,0b00100000
-			    ; set bit-0 on=1
+			    ; set bit-5 on=1
 set_led_green: 
 	 sts PORTD_OUT,tmp
 			    ; toggle led
-	 nop
-	 nop
-	 nop
-	 nop
-	 
-toggle_off:
-	 andi tmp,0b11111110	
-set_led_off: 
-	 sts PORTD_OUT,tmp	 
+	 	 
 	 	 
          pop tmp
 ; restore tmp register
